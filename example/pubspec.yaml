@@ -1,0 +1,22 @@
+name: jsoncrack_example
+description: "A demo app showcasing the jsoncrack Flutter package."
+publish_to: 'none'
+version: 1.0.0
+
+environment:
+  sdk: ^3.8.1
+  flutter: ">=1.17.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  jsoncrack:
+    path: ..
+
+dev_dependencies:
+  flutter_lints: ^5.0.0
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true
