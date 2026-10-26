@@ -1,20 +1,25 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:jsoncrack/src/config.dart';
+import 'package:webview_all/webview_all.dart';
 
 import 'options.dart';
 
+/// The JavaScript channel name used to receive messages from the WebView.
+const _kChannelName = 'JsonCrackBridge';
+
 /// A widget that embeds the JsonCrack JSON viewer in a Flutter mobile/desktop app.
 ///
-/// This widget uses [InAppWebView] to load the JsonCrack HTML application
-/// and passes the provided JSON data to it via JavaScript evaluation.
+/// This widget uses [WebViewWidget] (via the `webview_all` package) to load the
+/// JsonCrack HTML application and passes the provided JSON data to it via
+/// JavaScript evaluation.
 ///
 /// ### Parameters
 ///
 /// - `json`: The JSON string to display in the viewer.
-/// - `url`: The URL or asset path to the JsonCrack HTML file.
-///   Default: `'assets/packages/jsoncrack/assets/jsoncrack.html'`.
+/// - `url`: The URL to the JsonCrack widget HTML page.
+///   Defaults to the hosted CDN: `https://jsoncrack-bdf.pages.dev/cdn/`.
 /// - `brightness`: The theme brightness (`light` or `dark`).
 ///   If `null`, it defaults to the current theme's brightness.
 /// - `options`: Configuration options for the viewer (layoutDirection, etc.).
@@ -35,16 +40,18 @@ class JsonCrackView extends StatefulWidget {
   const JsonCrackView({
     super.key,
     required this.json,
-    this.url = 'assets/packages/jsoncrack/assets/jsoncrack.html',
+    this.url,
     this.brightness,
     this.options = const JsonCrackOptions(),
+    this.onReady,
+    this.loadingBuilder,
   });
 
   /// The JSON string to display in the viewer.
   final String json;
 
-  /// The URL or asset path to the JsonCrack HTML file.
-  final String url;
+  /// The URL to the JsonCrack widget HTML page. Defaults to hosted CDN.
+  final String? url;
 
   /// The theme brightness for the viewer.
   ///
@@ -54,29 +61,100 @@ class JsonCrackView extends StatefulWidget {
   /// Configuration options for the JsonCrack viewer.
   final JsonCrackOptions options;
 
+  /// Called when the viewer finishes loading and is ready to display data.
+  final VoidCallback? onReady;
+
+  /// Builder for a custom loading indicator.
+  final Widget Function(BuildContext context, double progress)? loadingBuilder;
+
   @override
   State<JsonCrackView> createState() => _JsonCrackViewState();
 }
 
 class _JsonCrackViewState extends State<JsonCrackView> {
-  InAppWebViewController? _controller;
+  late final WebViewController _controller;
   bool _ready = false;
 
   /// Sends the current JSON data to the web view.
-  void _sendToJsonCrack() {
-    if (_controller == null || !_ready) return;
+  Future<void> _sendToJsonCrack() async {
+    if (!_ready) return;
 
     final effectiveBrightness =
         widget.brightness ?? Theme.of(context).brightness;
-    final escapedJson = widget.json.replaceAll('"', '\\"').replaceAll('\n', '\\n');
-    final source =
-        'window.load("$escapedJson", "${effectiveBrightness.name}")';
-    _controller!.evaluateJavascript(source: source);
+    final optionsMap = widget.options.toJson();
+    optionsMap['theme'] = effectiveBrightness.name;
+
+    // Use JSON encoding for safe string escaping
+    final payload = jsonEncode({
+      'type': 'init',
+      'data': {'json': widget.json, 'options': optionsMap},
+    });
+
+    try {
+      await _controller.runJavaScript('''
+        if (window.loadJsonCrack) {
+          window.loadJsonCrack($payload);
+        } else {
+          window.dispatchEvent(new MessageEvent('message', {
+            data: $payload
+          }));
+        }
+      ''');
+    } catch (e) {
+      debugPrint('jsoncrack send error: $e');
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..addJavaScriptChannel(
+        _kChannelName,
+        onMessageReceived: (JavaScriptMessage message) {
+          try {
+            final data = jsonDecode(message.message);
+            if (data is Map &&
+                (data['status'] == 'ready' || data['type'] == 'ready')) {
+              if (mounted) {
+                final wasReady = _ready;
+                setState(() {
+                  _ready = true;
+                });
+                if (!wasReady) {
+                  widget.onReady?.call();
+                }
+                _sendToJsonCrack();
+              }
+            }
+          } catch (e) {
+            debugPrint('jsoncrack message error: $e');
+          }
+        },
+      )
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onPageFinished: (String url) async {
+            if (widget.url != null) {
+              await _controller.runJavaScript(
+                'if (window.setIframeSrc) window.setIframeSrc(${jsonEncode(widget.url)});',
+              );
+            }
+          },
+        ),
+      )
+      ..loadFlutterAsset(jsoncrackBridgeAsset);
   }
 
   @override
   void didUpdateWidget(covariant JsonCrackView oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.url != oldWidget.url && widget.url != null) {
+      _controller.runJavaScript(
+        'if (window.setIframeSrc) window.setIframeSrc(${jsonEncode(widget.url)});',
+      );
+    }
     // When JSON or options change, send the updated data to the web view
     if (widget.json != oldWidget.json ||
         widget.options != oldWidget.options ||
@@ -87,34 +165,26 @@ class _JsonCrackViewState extends State<JsonCrackView> {
 
   @override
   Widget build(BuildContext context) {
-    final effectiveBrightness = widget.brightness ?? Theme.of(context).brightness;
-    return InAppWebView(
-      initialUrlRequest: URLRequest(url: WebUri(widget.url)),
-      onWebViewCreated: (controller) {
-        _controller = controller;
-        controller.addWebMessageListener(
-          WebMessageListener(
-            jsObjectName: '',
-            onPostMessage: (message, sourceOrigin, isMainFrame, replyProxy) {
-              try {
-                final data = jsonDecode(message!.data);
-                if (data['status'] == 'ready' || data['type'] == 'ready') {
-                  setState(() {
-                    _ready = true;
-                  });
-                  final escapedJson =
-                      widget.json.replaceAll('"', '\\"').replaceAll('\n', '\\n');
-                  final source =
-                      'window.load("$escapedJson", "${effectiveBrightness.name}")';
-                  controller.evaluateJavascript(source: source);
-                }
-              } catch (e) {
-                debugPrint('jsoncrack message error: $e');
-              }
-            },
-          ),
-        );
-      },
+    return Stack(
+      children: [
+        WebViewWidget(controller: _controller),
+        if (!_ready)
+          widget.loadingBuilder != null
+              ? widget.loadingBuilder!(context, 0.5)
+              : const Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CircularProgressIndicator(),
+                      SizedBox(height: 16),
+                      Text(
+                        'Loading JSON viewer...',
+                        style: TextStyle(fontSize: 14, color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                ),
+      ],
     );
   }
 }

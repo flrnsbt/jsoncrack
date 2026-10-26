@@ -30,6 +30,7 @@ migrate_working_dir/
 .flutter-plugins-dependencies
 build/
 
-
-assets/src/
 .tmp/
+
+# FVM Version Cache
+.fvm/

@@ -37,6 +37,7 @@ cat > next.config.js <<'EOF'
 const nextConfig = {
   output: 'export',
   assetPrefix: './',
+  trailingSlash: true,
   reactStrictMode: false,
   generateBuildId: async () => 'jsoncrack-widget',
   compiler: {
@@ -132,14 +133,19 @@ interface EmbedMessage {
 
 const WidgetPage: React.FC = () => {
   const { query, isReady } = useRouter();
-  const [jsonInput, setJsonInput] = React.useState<string | object>('{}');
-  const [theme, setTheme] = React.useState<'dark' | 'light'>('dark');
+  const [jsonInput, setJsonInput] = React.useState<string | object | null>(null);
+  const [theme, setTheme] = React.useState<'dark' | 'light'>('light');
   const [layoutDirection, setLayoutDirection] = React.useState<string>('RIGHT');
   const [showGrid, setShowGrid] = React.useState<boolean>(true);
+  const [showControls, setShowControls] = React.useState<boolean>(false);
+  const [centerOnLayout, setCenterOnLayout] = React.useState<boolean>(true);
+  const [maxRenderableNodes, setMaxRenderableNodes] = React.useState<number>(1500);
+  const [dataReceived, setDataReceived] = React.useState<boolean>(false);
 
   React.useEffect(() => {
     if (isReady && typeof query?.json === 'string') {
       setJsonInput(query.json);
+      setDataReceived(true);
     }
   }, [isReady, query?.json]);
 
@@ -147,6 +153,8 @@ const WidgetPage: React.FC = () => {
   React.useEffect(() => {
     if (typeof window !== 'undefined' && window.parent) {
       window.parent.postMessage({ type: 'ready' }, '*');
+    }else{
+      console.error("Couldn't send read message to parent");
     }
   }, []);
 
@@ -160,13 +168,17 @@ const WidgetPage: React.FC = () => {
         if (typeof data === 'string') {
           try {
             const parsed = JSON.parse(data);
-            if (parsed.json) {
+            if (parsed.json !== undefined) {
               setJsonInput(parsed.json);
+              setDataReceived(true);
               if (parsed.options) {
                 const opts = parsed.options;
                 if (opts.theme) setTheme(opts.theme);
                 setLayoutDirection(opts.layoutDirection);
                 if (typeof opts.showGrid === 'boolean') setShowGrid(opts.showGrid);
+                if (typeof opts.showControls === 'boolean') setShowControls(opts.showControls);
+                if (typeof opts.centerOnLayout === 'boolean') setCenterOnLayout(opts.centerOnLayout);
+                if (typeof opts.maxRenderableNodes === 'number') setMaxRenderableNodes(opts.maxRenderableNodes);
               }
             }
           } catch {
@@ -176,14 +188,18 @@ const WidgetPage: React.FC = () => {
         }
 
         // Handle object message with json property
-        if (data.json) {
+        if (data.json !== undefined) {
           setJsonInput(data.json);
+          setDataReceived(true);
         }
         if (data.options) {
           const opts = data.options;
           if (opts.theme) setTheme(opts.theme);
           if (opts.layoutDirection) setLayoutDirection(opts.layoutDirection);
           if (typeof opts.showGrid === 'boolean') setShowGrid(opts.showGrid);
+          if (typeof opts.showControls === 'boolean') setShowControls(opts.showControls);
+          if (typeof opts.centerOnLayout === 'boolean') setCenterOnLayout(opts.centerOnLayout);
+          if (typeof opts.maxRenderableNodes === 'number') setMaxRenderableNodes(opts.maxRenderableNodes);
         }
       } catch (error) {
         console.error('jsoncrack widget message error:', error);
@@ -193,6 +209,32 @@ const WidgetPage: React.FC = () => {
     return () => window.removeEventListener('message', handler);
   }, []);
 
+  if (!dataReceived || jsonInput === null) {
+    return (
+      <>
+        <Head>
+          <meta name="robots" content="noindex, nofollow" />
+        </Head>
+        <div style={{
+          width: '100vw',
+          height: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: theme === 'dark' ? '#1e1e1e' : '#ffffff',
+        }}>
+          <div style={{
+            color: theme === 'dark' ? '#888' : '#999',
+            fontSize: 14,
+            fontFamily: 'system-ui, sans-serif',
+          }}>
+            Loading...
+          </div>
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
       <Head>
@@ -200,11 +242,14 @@ const WidgetPage: React.FC = () => {
       </Head>
       <div style={{ width: '100vw', height: '100vh' }}>
         <JSONCrack
+          key={1}
           json={jsonInput}
           theme={theme}
           layoutDirection={layoutDirection as any}
-          showControls={false}
+          showControls={showControls}
           showGrid={showGrid}
+          centerOnLayout={centerOnLayout}
+          maxRenderableNodes={maxRenderableNodes}
         />
       </div>
     </>
@@ -215,7 +260,7 @@ export default WidgetPage;
 WIDGET_EOF
 
 echo "== Installing dependencies =="
-npm install --production next react react-dom jsoncrack-react
+npm install --omit=dev next react react-dom jsoncrack-react
 npm install --save-dev typescript @types/react @types/react-dom @types/node
 
 echo "== Building project =="
@@ -226,14 +271,14 @@ cd "$ORIGINAL_DIR"
 rm -rf "$OUTPUT_DIR"
 mkdir -p "$OUTPUT_DIR"
 
-# Copy only the widget page HTML
-# Note: <base href="./"> is intentionally NOT used — browsers interpret it as the origin
-# root (/), which breaks relative path resolution. The assetPrefix: './' in next.config.js
-# already generates ./_next/static/... paths that resolve correctly relative to the
-# HTML file's directory (e.g., assets/packages/jsoncrack/assets/src/_next/...)
-cp "$TMP_DIR/out/widget.html" "$OUTPUT_DIR/index.html"
+# Copy only the widget page HTML, ensuring base directory is preserved for dynamic chunk loading
+# Note: Turbopack runtime automatically resolves chunk paths using assetPrefix ('./_next/').
+# The inline otherChunks registry must retain "static/chunks/..." for Turbopack to match them.
+BASE_SCRIPT="<script>(function(){var b=document.createElement('base');var p=window.location.pathname;if(!p.endsWith('/')){p=p.substring(0,p.lastIndexOf('/')+1);}b.href=window.location.origin+p;document.head.appendChild(b);})();</script>"
+sed "s|<head>|<head>${BASE_SCRIPT}|g" "$TMP_DIR/out/widget.html" > "$OUTPUT_DIR/index.html"
 
 # Copy required assets (_next)
 cp -r "$TMP_DIR/out/_next" "$OUTPUT_DIR/"
+
 
 echo "== Deployment complete! Output in $OUTPUT_DIR =="

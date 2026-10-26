@@ -8,10 +8,13 @@ void main() => runApp(const JsonCrackExampleApp());
 ///
 /// Demonstrates:
 /// - Theme switching (light/dark)
-/// - Layout direction toggling
-/// - Dynamic JSON input with validation
-/// - Preset sample data
+/// - Layout direction toggling with type-safe enum
+/// - Dynamic JSON input with real-time validation
+/// - Preset sample data with 6 diverse examples
 /// - Responsive sidebar layout
+/// - Loading state indicators
+/// - JSON formatting and reset
+/// - Viewer settings dialog
 class JsonCrackExampleApp extends StatefulWidget {
   const JsonCrackExampleApp({super.key});
 
@@ -184,6 +187,41 @@ const kSampleJsonData = {
     "c": {"nested": {"x": 5, "y": 6}}
   }
 }''',
+  'Array of Objects': '''{
+  "employees": [
+    {
+      "id": 101,
+      "name": "Diana Prince",
+      "department": "Engineering",
+      "skills": ["Python", "Dart", "Flutter"],
+      "projects": [
+        {"name": "Project Alpha", "role": "Lead"},
+        {"name": "Project Beta", "role": "Contributor"}
+      ]
+    },
+    {
+      "id": 102,
+      "name": "Bruce Wayne",
+      "department": "Design",
+      "skills": ["Figma", "UI/UX", "Prototyping"],
+      "projects": [
+        {"name": "Project Alpha", "role": "Designer"}
+      ]
+    },
+    {
+      "id": 103,
+      "name": "Clark Kent",
+      "department": "Marketing",
+      "skills": ["SEO", "Content", "Analytics"],
+      "projects": []
+    }
+  ],
+  "company": {
+    "name": "Example Corp",
+    "founded": 2020,
+    "headquarters": "Metropolis"
+  }
+}''',
 };
 
 /// Home widget for the example app.
@@ -201,18 +239,22 @@ class _Home extends StatefulWidget {
 }
 
 class _HomeState extends State<_Home> {
-  String _layoutDirection = 'RIGHT';
+  JsonCrackLayoutDirection _layoutDirection = JsonCrackLayoutDirection.right;
   bool _showGrid = true;
+  bool _showControls = false;
+  int _maxRenderableNodes = 1500;
   bool _sidebarOpen = true;
   String _selectedSample = 'User Profile';
   late TextEditingController _jsonController;
   String? _jsonError;
-  bool _dialogOpen = false;
+  bool _viewerReady = false;
 
   @override
   void initState() {
     super.initState();
-    _jsonController = TextEditingController(text: kSampleJsonData[_selectedSample]);
+    _jsonController = TextEditingController(
+      text: kSampleJsonData[_selectedSample],
+    );
   }
 
   @override
@@ -223,6 +265,8 @@ class _HomeState extends State<_Home> {
 
   String get _jsonInput => _jsonController.text;
 
+  String? get _url => '/cdn/index.html';
+
   bool get _isValidJson {
     try {
       jsonDecode(_jsonInput);
@@ -232,10 +276,39 @@ class _HomeState extends State<_Home> {
     }
   }
 
+  int get _jsonSize {
+    try {
+      final parsed = jsonDecode(_jsonInput);
+      return _countNodes(parsed);
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  int _countNodes(Object obj) {
+    if (obj is Map) {
+      var count = obj.length;
+      for (final value in obj.values) {
+        count += _countNodes(value);
+      }
+      return count;
+    }
+    if (obj is List) {
+      var count = obj.length;
+      for (final item in obj) {
+        count += _countNodes(item);
+      }
+      return count;
+    }
+    return 0;
+  }
+
   JsonCrackOptions get _options => JsonCrackOptions(
-        layoutDirection: _layoutDirection,
-        showGrid: _showGrid,
-      );
+    layoutDirection: _layoutDirection,
+    showGrid: _showGrid,
+    showControls: _showControls,
+    maxRenderableNodes: _maxRenderableNodes,
+  );
 
   void _selectSample(String sample) {
     setState(() {
@@ -258,21 +331,44 @@ class _HomeState extends State<_Home> {
     }
   }
 
+  void _onViewerReady() {
+    _viewerReady = true;
+
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final isWide = MediaQuery.of(context).size.width > 800;
+    final isNarrow = MediaQuery.of(context).size.width < 600;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('JsonCrack Example'),
-        leading: IconButton(
-          icon: const Icon(Icons.menu),
-          tooltip: 'Toggle sidebar',
-          onPressed: () => setState(() => _sidebarOpen = !_sidebarOpen),
-        ),
+        leading: isWide
+            ? IconButton(
+                icon: const Icon(Icons.menu),
+                tooltip: 'Toggle sidebar',
+                onPressed: () => setState(() => _sidebarOpen = !_sidebarOpen),
+              )
+            : null,
         actions: [
+          if (_viewerReady)
+            Tooltip(
+              message: 'Viewer ready',
+              child: Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: Icon(
+                  Icons.check_circle,
+                  color: theme.colorScheme.tertiary,
+                  size: 20,
+                ),
+              ),
+            ),
           IconButton(
             icon: Icon(isDark ? Icons.light_mode : Icons.dark_mode),
             tooltip: 'Toggle theme',
@@ -285,47 +381,267 @@ class _HomeState extends State<_Home> {
           ),
         ],
       ),
-      body: Row(
-        children: [
-          if (_sidebarOpen)
-            NavigationRail(
-              extended: isWide,
-              leading: _sampleSelector(),
-              trailing: _actionButtons(),
-              labelType: isWide ? NavigationRailLabelType.none : NavigationRailLabelType.all,
-              destinations: const [
-                NavigationRailDestination(
-                  icon: Icon(Icons.code),
-                  label: Text('Editor'),
-                ),
-              ],
-              selectedIndex: 0,
+      drawer: isWide ? null : _buildDrawer(),
+      body: isWide
+          ? _buildWideLayout(isDark)
+          : _buildNarrowLayout(isDark, isNarrow),
+      floatingActionButton: isNarrow
+          ? FloatingActionButton(
+              onPressed: () => _showEditorBottomSheet(context),
+              tooltip: 'Edit JSON',
+              child: const Icon(Icons.edit),
+            )
+          : null,
+    );
+  }
+
+  /// Drawer for mobile and tablet screens with sample selection and actions.
+  Widget _buildDrawer() {
+    return Drawer(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Samples',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
-          if (_sidebarOpen) const VerticalDivider(width: 1),
-          Expanded(
-            flex: 2,
-            child: Column(
-              children: [
-                _statusBar(),
-                Expanded(
-                  child: Offstage(
-                    offstage: _dialogOpen,
-                    child: JsonCrackView(
-                      json: _jsonInput,
-                      brightness: isDark ? Brightness.dark : Brightness.light,
-                      options: _options,
-                    ),
-                  ),
+            const SizedBox(height: 8),
+            Expanded(
+              child: ListView.separated(
+                itemCount: kSampleJsonData.keys.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 4),
+                itemBuilder: (context, index) {
+                  final sample = kSampleJsonData.keys.elementAt(index);
+                  return ListTile(
+                    dense: true,
+                    selected: _selectedSample == sample,
+                    title: Text(sample),
+                    onTap: () {
+                      _selectSample(sample);
+                      Navigator.pop(context);
+                    },
+                  );
+                },
+              ),
+            ),
+            const Divider(),
+            FilledButton.icon(
+              onPressed: () {
+                _formatJson();
+                Navigator.pop(context);
+              },
+              icon: const Icon(Icons.format_indent_increase, size: 18),
+              label: const Text('Format JSON'),
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: () {
+                _selectSample(_selectedSample);
+                Navigator.pop(context);
+              },
+              icon: const Icon(Icons.refresh, size: 18),
+              label: const Text('Reset'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Wide layout with NavigationRail sidebar and editor panel (desktop).
+  Widget _buildWideLayout(bool isDark) {
+    return Row(
+      children: [
+        if (_sidebarOpen)
+          NavigationRail(
+            extended: true,
+            leading: _sampleSelector(),
+            trailing: _actionButtons(),
+            labelType: NavigationRailLabelType.none,
+            destinations: const [
+              NavigationRailDestination(
+                icon: Icon(Icons.code),
+                label: Text('Editor'),
+              ),
+            ],
+            selectedIndex: 0,
+          ),
+        if (_sidebarOpen) const VerticalDivider(width: 1),
+        Expanded(
+          flex: 2,
+          child: Column(
+            children: [
+              _statusBar(),
+              Expanded(
+                child: JsonCrackView(
+                  json: _jsonInput,
+                  url: _url,
+                  brightness: isDark ? Brightness.dark : Brightness.light,
+                  options: _options,
+                  onReady: _onViewerReady,
                 ),
-              ],
+              ),
+            ],
+          ),
+        ),
+        if (_sidebarOpen) Expanded(child: _editorPanel()),
+      ],
+    );
+  }
+
+  /// Narrow layout for mobile and tablet screens.
+  Widget _buildNarrowLayout(bool isDark, bool isNarrow) {
+    return Column(
+      children: [
+        if (isNarrow) _mobileStatusBar(),
+        if (!isNarrow) _statusBar(),
+        Expanded(
+          child: JsonCrackView(
+            url: _url,
+            json: _jsonInput,
+            brightness: isDark ? Brightness.dark : Brightness.light,
+            options: _options,
+            onReady: _onViewerReady,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Compact status bar for mobile screens.
+  Widget _mobileStatusBar() {
+    final theme = Theme.of(context);
+    final isValid = _isValidJson;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      color: theme.colorScheme.surfaceContainerHighest,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isValid ? Icons.check_circle : Icons.error,
+            size: 14,
+            color: isValid
+                ? theme.colorScheme.primary
+                : theme.colorScheme.error,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            isValid ? 'Valid' : 'Invalid',
+            style: TextStyle(
+              fontSize: 11,
+              color: isValid
+                  ? theme.colorScheme.primary
+                  : theme.colorScheme.error,
             ),
           ),
-          if (_sidebarOpen)
-            Expanded(
-              child: _editorPanel(),
+          if (isValid) ...[
+            const SizedBox(width: 8),
+            Text(
+              '$_jsonSize nodes',
+              style: TextStyle(
+                fontSize: 11,
+                color: theme.colorScheme.secondary,
+              ),
             ),
+          ],
+          const Spacer(),
+          Text(
+            _layoutDirection.name.toUpperCase(),
+            style: const TextStyle(fontSize: 10),
+          ),
         ],
       ),
+    );
+  }
+
+  /// Bottom sheet editor for mobile screens.
+  void _showEditorBottomSheet(BuildContext context) {
+    final localController = TextEditingController(text: _jsonInput);
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom,
+            left: 16,
+            right: 16,
+            top: 16,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.code, size: 18),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'JSON Editor',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const Spacer(),
+                  TextButton(
+                    onPressed: () {
+                      _formatJson();
+                      localController.text = _jsonInput;
+                    },
+                    child: const Text('Format'),
+                  ),
+                  const SizedBox(width: 8),
+                  TextButton(
+                    onPressed: () {
+                      _selectSample(_selectedSample);
+                      localController.text = _jsonInput;
+                    },
+                    child: const Text('Reset'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(ctx).size.height * 0.5,
+                ),
+                child: TextField(
+                  controller: localController,
+                  maxLines: null,
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.all(12),
+                    hintText: 'Paste your JSON here...',
+                    isDense: true,
+                  ),
+                  keyboardType: TextInputType.multiline,
+                  style: const TextStyle(fontFamily: 'monospace', fontSize: 13),
+                ),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () {
+                    setState(() {
+                      _jsonController.text = localController.text;
+                      try {
+                        jsonDecode(localController.text);
+                        _jsonError = null;
+                      } catch (e) {
+                        _jsonError = e.toString();
+                      }
+                    });
+                    Navigator.pop(ctx);
+                  },
+                  child: const Text('Apply'),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -334,6 +650,7 @@ class _HomeState extends State<_Home> {
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Column(
         mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
             'Samples',
@@ -344,7 +661,11 @@ class _HomeState extends State<_Home> {
             return Padding(
               padding: const EdgeInsets.symmetric(vertical: 2),
               child: ChoiceChip(
-                label: Text(sample),
+                label: Text(
+                  sample,
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
                 selected: _selectedSample == sample,
                 onSelected: (_) => _selectSample(sample),
                 labelStyle: const TextStyle(fontSize: 11),
@@ -389,19 +710,39 @@ class _HomeState extends State<_Home> {
           Icon(
             isValid ? Icons.check_circle : Icons.error,
             size: 18,
-            color: isValid ? theme.colorScheme.primary : theme.colorScheme.error,
+            color: isValid
+                ? theme.colorScheme.primary
+                : theme.colorScheme.error,
           ),
           const SizedBox(width: 8),
           Text(
-            isValid ? 'Valid JSON' : 'Invalid JSON: $_jsonError',
+            isValid ? 'Valid JSON' : 'Invalid JSON',
             style: TextStyle(
               fontSize: 13,
-              color: isValid ? theme.colorScheme.primary : theme.colorScheme.error,
+              color: isValid
+                  ? theme.colorScheme.primary
+                  : theme.colorScheme.error,
             ),
           ),
+          if (isValid) ...[
+            const SizedBox(width: 16),
+            Icon(
+              Icons.account_tree,
+              size: 16,
+              color: theme.colorScheme.secondary,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              '$_jsonSize nodes',
+              style: TextStyle(
+                fontSize: 13,
+                color: theme.colorScheme.secondary,
+              ),
+            ),
+          ],
           const Spacer(),
           Text(
-            'Direction: $_layoutDirection',
+            'Direction: ${_layoutDirection.name.toUpperCase()}',
             style: const TextStyle(fontSize: 12),
           ),
         ],
@@ -443,10 +784,7 @@ class _HomeState extends State<_Home> {
                 isDense: true,
               ),
               keyboardType: TextInputType.multiline,
-              style: const TextStyle(
-                fontFamily: 'monospace',
-                fontSize: 13,
-              ),
+              style: const TextStyle(fontFamily: 'monospace', fontSize: 13),
               onChanged: (value) {
                 setState(() {
                   try {
@@ -465,20 +803,22 @@ class _HomeState extends State<_Home> {
   }
 
   Future<void> _showSettingsDialog(BuildContext context) async {
-    setState(() => _dialogOpen = true);
     final result = await showDialog<ViewerSettings>(
       context: context,
       builder: (context) => ViewerSettingsDialog(
         initialDirection: _layoutDirection,
         initialShowGrid: _showGrid,
+        initialShowControls: _showControls,
+        initialMaxRenderableNodes: _maxRenderableNodes,
       ),
     );
     if (mounted) {
       setState(() {
-        _dialogOpen = false;
         if (result != null) {
           _layoutDirection = result.direction;
           _showGrid = result.showGrid;
+          _showControls = result.showControls;
+          _maxRenderableNodes = result.maxRenderableNodes;
         }
       });
     }
@@ -487,10 +827,17 @@ class _HomeState extends State<_Home> {
 
 /// Data class holding viewer settings selected by the user.
 class ViewerSettings {
-  final String direction;
+  final JsonCrackLayoutDirection direction;
   final bool showGrid;
+  final bool showControls;
+  final int maxRenderableNodes;
 
-  const ViewerSettings({required this.direction, required this.showGrid});
+  const ViewerSettings({
+    required this.direction,
+    required this.showGrid,
+    this.showControls = false,
+    this.maxRenderableNodes = 1500,
+  });
 }
 
 /// A dialog widget for configuring JsonCrack viewer settings.
@@ -498,13 +845,17 @@ class ViewerSettings {
 /// Returns the selected [ViewerSettings] when the user confirms,
 /// or `null` if the dialog is cancelled.
 class ViewerSettingsDialog extends StatefulWidget {
-  final String initialDirection;
+  final JsonCrackLayoutDirection initialDirection;
   final bool initialShowGrid;
+  final bool initialShowControls;
+  final int initialMaxRenderableNodes;
 
   const ViewerSettingsDialog({
     super.key,
     required this.initialDirection,
     required this.initialShowGrid,
+    this.initialShowControls = false,
+    this.initialMaxRenderableNodes = 1500,
   });
 
   @override
@@ -512,14 +863,18 @@ class ViewerSettingsDialog extends StatefulWidget {
 }
 
 class _ViewerSettingsDialogState extends State<ViewerSettingsDialog> {
-  late String _direction;
+  late JsonCrackLayoutDirection _direction;
   late bool _showGrid;
+  late bool _showControls;
+  late int _maxRenderableNodes;
 
   @override
   void initState() {
     super.initState();
     _direction = widget.initialDirection;
     _showGrid = widget.initialShowGrid;
+    _showControls = widget.initialShowControls;
+    _maxRenderableNodes = widget.initialMaxRenderableNodes;
   }
 
   @override
@@ -534,14 +889,26 @@ class _ViewerSettingsDialogState extends State<ViewerSettingsDialog> {
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
-            DropdownButtonFormField<String>(
+            DropdownButtonFormField<JsonCrackLayoutDirection>(
               initialValue: _direction,
               isDense: true,
               items: const [
-                DropdownMenuItem(value: 'RIGHT', child: Text('Right')),
-                DropdownMenuItem(value: 'DOWN', child: Text('Down')),
-                DropdownMenuItem(value: 'LEFT', child: Text('Left')),
-                DropdownMenuItem(value: 'UP', child: Text('Up')),
+                DropdownMenuItem(
+                  value: JsonCrackLayoutDirection.right,
+                  child: Text('Right'),
+                ),
+                DropdownMenuItem(
+                  value: JsonCrackLayoutDirection.down,
+                  child: Text('Down'),
+                ),
+                DropdownMenuItem(
+                  value: JsonCrackLayoutDirection.left,
+                  child: Text('Left'),
+                ),
+                DropdownMenuItem(
+                  value: JsonCrackLayoutDirection.up,
+                  child: Text('Up'),
+                ),
               ],
               onChanged: (value) {
                 if (value != null) {
@@ -558,6 +925,71 @@ class _ViewerSettingsDialogState extends State<ViewerSettingsDialog> {
                 setState(() => _showGrid = value);
               },
             ),
+            const SizedBox(height: 16),
+            const Text(
+              'Interaction',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            SwitchListTile(
+              title: const Text('Show Controls'),
+              subtitle: const Text('Display pan/zoom buttons'),
+              value: _showControls,
+              onChanged: (value) {
+                setState(() => _showControls = value);
+              },
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Performance',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            ListTile(
+              title: const Text('Max Renderable Nodes'),
+              subtitle: Text(
+                'Current: $_maxRenderableNodes (recommended: 300–500)',
+              ),
+              trailing: TextButton(
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (ctx) {
+                      final controller = TextEditingController(
+                        text: '$_maxRenderableNodes',
+                      );
+                      return AlertDialog(
+                        title: const Text('Max Renderable Nodes'),
+                        content: TextField(
+                          controller: controller,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            hintText: 'Enter max nodes (e.g. 1500)',
+                          ),
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            child: const Text('Cancel'),
+                          ),
+                          FilledButton(
+                            onPressed: () {
+                              final value = int.tryParse(controller.text);
+                              if (value != null && value > 0) {
+                                setState(() => _maxRenderableNodes = value);
+                                Navigator.pop(ctx);
+                              }
+                            },
+                            child: const Text('Apply'),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                },
+                child: const Text('Change'),
+              ),
+            ),
           ],
         ),
       ),
@@ -570,7 +1002,12 @@ class _ViewerSettingsDialogState extends State<ViewerSettingsDialog> {
           onPressed: () {
             Navigator.pop(
               context,
-              ViewerSettings(direction: _direction, showGrid: _showGrid),
+              ViewerSettings(
+                direction: _direction,
+                showGrid: _showGrid,
+                showControls: _showControls,
+                maxRenderableNodes: _maxRenderableNodes,
+              ),
             );
           },
           child: const Text('Apply'),

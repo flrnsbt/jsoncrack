@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html>
-<header>
+<head>
     <style>
         html,
         body {
@@ -20,7 +20,7 @@
             height: 100%;
         }
     </style>
-</header>
+</head>
 
 <body>
     <script>
@@ -28,29 +28,79 @@
 
         const iframe = document.createElement('iframe');
         iframe.id = 'jsoncrackEmbed';
-        iframe.src = params.get('src') || 'src/index.html';
+        const iframeSRC = params.get('src') || 'https://jsoncrack-bdf.pages.dev/cdn/';
+        
+        let iframeSRCOrigin = '*';
+        try {
+            const parsed = new URL(iframeSRC, window.location.href);
+            if (parsed.origin && parsed.origin !== 'null') {
+                iframeSRCOrigin = parsed.origin;
+            }
+        } catch (e) {
+            iframeSRCOrigin = '*';
+        }
+
+        iframe.src = iframeSRC;
         document.body.appendChild(iframe);
 
-        // Listen for messages from the child iframe (Next.js widget)
+        // jsoncrack.html acts as the message bridge between Flutter (parent) and the Next.js widget (iframe).
+        // It buffers init data from Flutter and sends it to the widget when the widget signals ready.
+        // It also forwards any subsequent init messages from Flutter directly to the widget.
+
+        let pendingInitData = null;
+        let widgetReady = false;
+
+        // Direct helper for native platforms (IO)
+        window.loadJsonCrack = function(payload) {
+            const data = (typeof payload === 'string') ? JSON.parse(payload) : payload;
+            if (data && data.type === 'init' && data.data) {
+                if (widgetReady) {
+                    iframe.contentWindow.postMessage(data.data, iframeSRCOrigin);
+                } else {
+                    pendingInitData = data.data;
+                }
+            }
+        };
+
+        window.setIframeSrc = function(src) {
+            if (iframe && src) {
+                iframe.src = src;
+            }
+        };
+
+        // Single message listener handles both directions:
+        // 1. From inner iframe (Next.js widget): detect 'ready' signal, forward all messages to Flutter
+        // 2. From parent (Flutter): buffer init data and forward to widget when ready
         window.addEventListener('message', (event) => {
             const data = event.data;
-            // Forward messages from the iframe to the parent (Flutter)
-            if (data && typeof data === 'object') {
+            if (!data || typeof data !== 'object') return;
+
+            // From Flutter: buffer init data
+            if (data.type === 'init' && data.data) {
+                if (widgetReady) {
+                    iframe.contentWindow.postMessage(data.data, iframeSRCOrigin);
+                } else {
+                    pendingInitData = data.data;
+                }
+                return;
+            }
+
+            // From Next.js widget: detect ready signal
+            if (data.type === 'ready') {
+                widgetReady = true;
+                if (pendingInitData) {
+                    iframe.contentWindow.postMessage(pendingInitData, iframeSRCOrigin);
+                }
+            }
+
+            // Forward all object messages from the widget to Flutter
+            // In native mobile/desktop platforms (IO), use the JavaScript channel bridge if present.
+            if (window.JsonCrackBridge) {
+                window.JsonCrackBridge.postMessage(JSON.stringify(data));
+            } else if (window.parent && window.parent !== window) {
+                // In Web platform, post to the parent window
                 window.parent.postMessage(data, '*');
             }
-        });
-
-        // Listen for messages from the parent (Flutter)
-        // Flutter sends {type: 'init', data: {json, options}} on init and on JSON update
-        iframe.addEventListener('load', () => {
-            const parentListener = (event) => {
-                const data = event.data;
-                if (data && data.type === 'init' && data.data) {
-                    // Forward the inner data ({json, options}) to the iframe
-                    iframe.contentWindow.postMessage(data.data, '*');
-                }
-            };
-            window.addEventListener('message', parentListener);
         });
     </script>
 </body>

@@ -9,6 +9,8 @@
 /// - Visual JSON tree viewer with graph layout
 /// - Support for light and dark themes
 /// - Configurable layout direction (right/down/left/up)
+/// - Toggle grid overlay, camera controls
+/// - Configurable max renderable nodes limit
 /// - Works on web, mobile, and desktop platforms
 ///
 /// ## Quick start
@@ -17,7 +19,7 @@
 ///
 /// ```yaml
 /// dependencies:
-///   jsoncrack: ^0.1.0
+///   jsoncrack: ^0.2.0
 /// ```
 ///
 /// Then use it in your app:
@@ -37,7 +39,10 @@
 ///   json: '{"key": "value"}',
 ///   brightness: Brightness.dark,
 ///   options: JsonCrackOptions(
-///     layoutDirection: 'DOWN',
+///     layoutDirection: JsonCrackLayoutDirection.down,
+///     showGrid: false,
+///     showControls: true,
+///     maxRenderableNodes: 500,
 ///   ),
 /// )
 /// ```
@@ -45,4 +50,4 @@
 library;
 
 export 'src/jsoncrack.dart';
-export 'src/options.dart';
+export 'src/options.dart' show JsonCrackOptions, JsonCrackLayoutDirection;
