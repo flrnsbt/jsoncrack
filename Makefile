@@ -10,7 +10,7 @@
 # Configuration
 EXAMPLE_DIR := example
 TMP_DIR := build/tmp_jsoncrack
-OUTPUT_DIR := example/build/web/cdn
+OUTPUT_DIR ?= example/build/web/cdn
 
 # Colors for output
 GREEN  := \033[0;32m

@@ -233,7 +233,7 @@ This allows the package to work without requiring users to build or host the wid
 
 Users can self-host the widget by:
 
-1. Building the React widget in `jsoncrack-react/`
+1. Building the React widget from source (e.g., using `./build-json-crack.sh` or `make export`)
 2. Hosting the built files on their own server
 3. Passing the custom URL to `JsonCrackView`
 

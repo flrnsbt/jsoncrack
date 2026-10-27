@@ -1,3 +1,8 @@
+## 0.3.0
+
+- Update pubspec.yaml dependencies constraints
+- Add support for material_ui package
+
 ## 0.2.0
 
 - **Type-safe API**: Added `JsonCrackLayoutDirection` enum for compile-time safe layout direction selection.

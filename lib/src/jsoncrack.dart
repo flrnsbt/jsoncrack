@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+
 import 'web.dart' if (dart.library.io) 'io.dart' as src;
 import 'options.dart';
 
@@ -85,8 +86,9 @@ class JsonCrackView extends StatelessWidget {
   /// By default, the widget loads from the hosted Cloudflare CDN:
   /// `https://jsoncrack-bdf.pages.dev/cdn/`.
   ///
-  /// To embed your own self-hosted or offline instance, use the compiled
-  /// `jsoncrack-react/` bundle and provide its URL or path here:
+  /// To embed your own self-hosted or offline instance, build the React widget
+  /// from source (e.g., using `./build-json-crack.sh` or `make export`) and
+  /// provide its URL or path here:
   /// ```dart
   /// JsonCrackView(
   ///   json: '{"key": "value"}',

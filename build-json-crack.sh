@@ -275,7 +275,7 @@ mkdir -p "$OUTPUT_DIR"
 # Note: Turbopack runtime automatically resolves chunk paths using assetPrefix ('./_next/').
 # The inline otherChunks registry must retain "static/chunks/..." for Turbopack to match them.
 BASE_SCRIPT="<script>(function(){var b=document.createElement('base');var p=window.location.pathname;if(!p.endsWith('/')){p=p.substring(0,p.lastIndexOf('/')+1);}b.href=window.location.origin+p;document.head.appendChild(b);})();</script>"
-sed "s|<head>|<head>${BASE_SCRIPT}|g" "$TMP_DIR/out/widget.html" > "$OUTPUT_DIR/index.html"
+sed "s|<head>|<head>${BASE_SCRIPT}|g" "$TMP_DIR/out/widget/index.html" > "$OUTPUT_DIR/index.html"
 
 # Copy required assets (_next)
 cp -r "$TMP_DIR/out/_next" "$OUTPUT_DIR/"

@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:jsoncrack/jsoncrack.dart';
 
 void main() => runApp(const JsonCrackExampleApp());

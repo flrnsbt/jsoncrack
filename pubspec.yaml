@@ -1,22 +1,23 @@
 name: jsoncrack
 description: "Embed the JsonCrack JSON viewer as a widget in your Flutter app. Visualize JSON data as an interactive graph."
-version: 0.2.0
+version: 0.3.0
 repository: https://github.com/flrnsbt/jsoncrack
 homepage: https://pub.dev/packages/jsoncrack
 documentation: https://raw.githubusercontent.com/flrnsbt/jsoncrack/refs/heads/main/README.md
 
 environment:
-  sdk: ^3.8.1
-  flutter: ">=1.17.0"
+  sdk: ">=3.9.0 <4.0.0"
+  flutter: ">=3.10.0"
 
 dependencies:
   flutter:
     sdk: flutter
-  webview_all: ^1.4.4
-  web: ^1.1.2
+  material_ui: ">=0.0.1 <2.0.0"
+  webview_all: ">=1.0.0 <2.0.0"
+  web: ">=1.0.0 <2.0.0"
 
 dev_dependencies:
-  flutter_lints: ^6.0.0
+  flutter_lints: ">=3.0.0 <7.0.0"
   flutter_test:
     sdk: flutter
 

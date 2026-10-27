@@ -54,7 +54,7 @@ lib/
 └── main.dart          # Main application code with all demo features
 assets/                # Local assets (if any)
 web/
-└── cdn/               # Prebuilt JsonCrack widget files
+└── cdn/               # JsonCrack widget files (build with `make export` or `./build-json-crack.sh`)
 ```
 
 ## Key Components

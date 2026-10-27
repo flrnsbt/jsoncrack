@@ -190,7 +190,7 @@ Because the widget is hosted on a high-availability CDN, no local web server or 
 
 If you prefer to self-host or embed your own copy (for air-gapped environments or custom branding):
 
-1. Copy the prebuilt [`jsoncrack-react/`](jsoncrack-react/) directory from this repository to your web server, CDN, or hosting provider. (You can also rebuild it at any time using `./build-json-crack.sh` or `make export`).
+1. Build the `jsoncrack-react` app from source using `./build-json-crack.sh` or `make export`, then copy the output directory to your web server, CDN, or hosting provider.
 2. Ensure your server headers allow cross-origin iframe embedding:
 
    ```http
