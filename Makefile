@@ -10,7 +10,7 @@
 # Configuration
 EXAMPLE_DIR := example
 TMP_DIR := build/tmp_jsoncrack
-OUTPUT_DIR := example/build/web/
+OUTPUT_DIR := example/build/web/cdn
 
 # Colors for output
 GREEN  := \033[0;32m
@@ -37,6 +37,8 @@ ensure-fvm:
 
 ## example-web: Build the example Flutter web project
 example-web: ensure-fvm
+	@echo -e "$(YELLOW)→ Getting example dependencies...$(NC)"
+	@cd $(EXAMPLE_DIR) && $(FLUTTER) clean
 	@echo -e "$(YELLOW)→ Getting example dependencies...$(NC)"
 	@cd $(EXAMPLE_DIR) && $(FLUTTER) pub get --enforce-lockfile
 	@echo -e "$(YELLOW)→ Building example for web...$(NC)"
