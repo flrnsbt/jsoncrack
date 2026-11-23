@@ -1,3 +1,10 @@
+## 0.3.1
+
+- **Migration to `material_ui`**: Removed all `flutter/material` dependencies from the core package (`lib/src/io.dart`, `lib/src/web.dart`) in favor of `material_ui`.
+- **Removed legacy material scaffold handling**: Dropped the `_MaterialScaffoldData` implementation and `material.Scaffold`/`material.ScaffoldState` ancestor lookups; scaffold detection now only supports `material_ui` widgets.
+- **Updated documentation**: README import examples updated for `material_ui`.
+- **Pubspec.yaml**: Updated the package description in `pubspec.yaml`.
+
 ## 0.3.0
 
 - Update pubspec.yaml dependencies constraints
