@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:flutter/material.dart' as material;
 import 'package:material_ui/material_ui.dart';
 import 'package:jsoncrack/src/config.dart';
 import 'package:webview_all/webview_all.dart';
@@ -83,7 +82,6 @@ class _JsonCrackViewState extends State<JsonCrackView> {
     final effectiveBrightness =
         widget.brightness ??
         Theme.maybeBrightnessOf(context) ??
-        material.Theme.maybeBrightnessOf(context) ??
         Brightness.light;
     final optionsMap = widget.options.toJson();
     optionsMap['theme'] = effectiveBrightness.name;

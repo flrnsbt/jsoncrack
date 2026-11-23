@@ -40,7 +40,7 @@ flutter pub add jsoncrack
 No manual build or local web server is required! By default, the widget connects to the official hosted CDN (`https://jsoncrack-bdf.pages.dev/cdn/`):
 
 ```dart
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:jsoncrack/jsoncrack.dart';
 
 void main() => runApp(const MyApp());

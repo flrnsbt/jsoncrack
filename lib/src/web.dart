@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:js_interop';
 import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:flutter/material.dart' as material;
 import 'package:jsoncrack/src/config.dart';
 import 'package:web/web.dart' hide Text, Element;
 import 'dart:ui_web' as ui_web;
@@ -91,7 +90,6 @@ class _JsonCrackViewState extends State<JsonCrackView> {
     final effectiveBrightness =
         widget.brightness ??
         Theme.maybeBrightnessOf(context) ??
-        material.Theme.maybeBrightnessOf(context) ??
         Brightness.light;
     final optionsMap = widget.options.toJson();
     optionsMap['theme'] = effectiveBrightness.name;
@@ -274,7 +272,6 @@ Widget _textWidget(String data, {double fontSize = 14, Color? color}) {
 extension on BuildContext {
   _ScaffoldData? get localScaffold {
     ScaffoldState? targetScaffold;
-    material.ScaffoldState? targetMaterialScaffold;
     final children = <Element>[];
     visitAncestorElements((Element element) {
       final widget = element.widget;
@@ -282,14 +279,8 @@ extension on BuildContext {
         targetScaffold = (element as StatefulElement).state as ScaffoldState;
 
         return false;
-      } else if (widget is material.Scaffold) {
-        targetMaterialScaffold =
-            (element as material.StatefulElement).state
-                as material.ScaffoldState;
-        return false;
       }
-
-      if (widget is DrawerController || widget is material.DrawerController) {
+      if (widget is DrawerController) {
         return false;
       }
 
@@ -303,8 +294,6 @@ extension on BuildContext {
 
     if (targetScaffold != null) {
       return _MaterialUIScaffoldData(targetScaffold!, children[0]);
-    } else if (targetMaterialScaffold != null) {
-      return _MaterialScaffoldData(targetMaterialScaffold!, children[0]);
     }
 
     return null;
@@ -332,30 +321,6 @@ class _MaterialUIScaffoldData extends _ScaffoldData {
 
   ValueListenable<ScaffoldGeometry> get _geometry =>
       Scaffold.geometryOf(_context);
-
-  @override
-  void addGeometryChangesListener(void Function() listener) {
-    _geometry.addListener(listener);
-  }
-
-  @override
-  void removeGeometryChangesListener(void Function() listener) {
-    _geometry.removeListener(listener);
-  }
-}
-
-class _MaterialScaffoldData extends _ScaffoldData {
-  final material.ScaffoldState _state;
-  final Element _context;
-  const _MaterialScaffoldData(this._state, this._context);
-
-  @override
-  bool get isDrawerOpen {
-    return _state.isDrawerOpen || _state.isEndDrawerOpen;
-  }
-
-  ValueListenable<material.ScaffoldGeometry> get _geometry =>
-      material.Scaffold.geometryOf(_context);
 
   @override
   void addGeometryChangesListener(void Function() listener) {
