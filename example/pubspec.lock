@@ -45,10 +45,10 @@ packages:
     dependency: transitive
     description:
       name: cupertino_ui
-      sha256: a47c4e7c66fd7444a063a602597fceb238f705c3f6b1322bc0053d0a2638ee6e
+      sha256: c3eaf7f5bdfee36deb0b14a4cbf7602f1b6b8d8b8576b81f38fc08c25881c94c
       url: "https://pub.dev"
     source: hosted
-    version: "1.1.4"
+    version: "1.1.7"
   fake_async:
     dependency: transitive
     description:
@@ -132,6 +132,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "5.1.1"
+  listen:
+    dependency: transitive
+    description:
+      name: listen
+      sha256: "47501a08016a43fcad79252439d723f50f14f88fa7bfd8a177e0a417e5c9e1f2"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.1"
   matcher:
     dependency: transitive
     description:
@@ -152,10 +160,10 @@ packages:
     dependency: "direct main"
     description:
       name: material_ui
-      sha256: e4031746f96c8316864d9b92bce375f1320a36ed56e166307e1e1bda9d90b4ab
+      sha256: a6b19012df437a356cbc01f8ea22a105e07194c47c9a6009da0032a0ce35c4ab
       url: "https://pub.dev"
     source: hosted
-    version: "1.8.0"
+    version: "1.11.1"
   meta:
     dependency: transitive
     description:
@@ -229,10 +237,10 @@ packages:
     dependency: transitive
     description:
       name: test_api
-      sha256: "2a122cbe059f8b610d3a5415f42e255b6c17b1f21eee1d960f31080237fb4f11"
+      sha256: "0a10344e901e5b2e63819567951cb6a06673ed6b84f40462188ff5a0c41f371f"
       url: "https://pub.dev"
     source: hosted
-    version: "0.7.12"
+    version: "0.7.14"
   vector_math:
     dependency: transitive
     description:
@@ -261,66 +269,66 @@ packages:
     dependency: transitive
     description:
       name: webview_all
-      sha256: d6190ae475c7fdb4d1b1c0afda64d788172b2fbc367dfb72b9be2c704629984d
+      sha256: "5eb04369f95fa0d3f95e62b3ec36d6cfe36dda7fe6f6f60efcf26d8583ddbca0"
       url: "https://pub.dev"
     source: hosted
-    version: "1.4.7"
+    version: "1.5.2"
   webview_all_android:
     dependency: transitive
     description:
       name: webview_all_android
-      sha256: "34243b07dfed6c6e28ebdba9cd9353f4653ae393e23745aff6001115600a2e30"
+      sha256: "3295c5d53907224c3046e882aa165e987c5c67834b36e93bcacedfaa61ba696f"
       url: "https://pub.dev"
     source: hosted
-    version: "1.4.7"
+    version: "1.5.2"
   webview_all_linux:
     dependency: transitive
     description:
       name: webview_all_linux
-      sha256: e85f0b52d34ff0439acdf1f07602b44f58987046d4241aeb217059a68176d95a
+      sha256: "6bcf41a3c520b83fd37887a40a2740fbc50b250e5ae8f1f237fa0c5217a98b8b"
       url: "https://pub.dev"
     source: hosted
-    version: "1.4.7"
+    version: "1.5.2"
   webview_all_ohos:
     dependency: transitive
     description:
       name: webview_all_ohos
-      sha256: e86b77b6725264fc17cad1a13d34167bc0d3e19ce36280262b69e2f6db21ac40
+      sha256: "3df6843397ec0ddf1d2dd348ec41f13ec90163db5af15e4620d476f2533b741a"
       url: "https://pub.dev"
     source: hosted
-    version: "1.4.7"
+    version: "1.5.2"
   webview_all_web:
     dependency: transitive
     description:
       name: webview_all_web
-      sha256: cd274c08500246d02704c2658c832543aebe80b51dfbf801f5d085378f96097c
+      sha256: d3ec4fdebab52567c83642b2baa6ffcb274a31edfcd4646dd2506ef0291de66b
       url: "https://pub.dev"
     source: hosted
-    version: "1.4.7"
+    version: "1.5.2"
   webview_all_windows:
     dependency: transitive
     description:
       name: webview_all_windows
-      sha256: cd1d7723d6028515427a072bed119513e7fe1b3f69b70339cf04c11b4add15b9
+      sha256: c3cee8124c23f6b4135e1b75b4f99cf6021cecf1fc08c2efbe3642d2e0700f05
       url: "https://pub.dev"
     source: hosted
-    version: "1.4.7"
+    version: "1.5.2"
   webview_all_wkwebview:
     dependency: transitive
     description:
       name: webview_all_wkwebview
-      sha256: "56c7f30cee7f782f392fd05d1d1c856e0a70577075da257a454f695489c428a3"
+      sha256: "1849d36590dc0388df3370efe89745165299ce3316f1446628526bb9bcd417d5"
       url: "https://pub.dev"
     source: hosted
-    version: "1.4.7"
+    version: "1.5.2"
   webview_platform_interface:
     dependency: transitive
     description:
       name: webview_platform_interface
-      sha256: aa452be6b70044d95597b7e92830fbac7c18c301e3c5eae391496415d0256fd9
+      sha256: "843021a37a44f17490c300472acd6c393196cb6c2a677b50dbb4225b8dc904ef"
       url: "https://pub.dev"
     source: hosted
-    version: "1.4.7"
+    version: "1.5.2"
 sdks:
   dart: ">=3.13.0 <4.0.0"
   flutter: ">=3.47.0"

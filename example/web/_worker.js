@@ -35,10 +35,8 @@ export default {
       const isOurApp = secFetchSite === 'same-origin' || referer.includes(url.hostname);
       
       if (isOurApp) {
-        // SCENARIO A: Loaded inside your own Flutter app -> Enforce COEP for cross-origin isolation
         newHeaders.set('Cross-Origin-Embedder-Policy', 'require-corp');
       } else {
-        // SCENARIO B: Loaded by a third-party website -> Strip isolation policies
         newHeaders.delete('Cross-Origin-Embedder-Policy');
         newHeaders.delete('Cross-Origin-Opener-Policy');
       }
